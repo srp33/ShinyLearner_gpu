@@ -1,0 +1,3 @@
+#!/bin/bash
+
+docker build -t srp33/shinylearner_gpu:version$(./get_sl_version) .

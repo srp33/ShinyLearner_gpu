@@ -1,0 +1,4 @@
+FROM srp33/shinylearner_environment:{version}
+
+RUN conda uninstall tensorflow \
+  && conda uninstall tensorflow-gpu

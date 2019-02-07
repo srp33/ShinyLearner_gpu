@@ -1,0 +1,4 @@
+#!/bin/bash
+
+#docker run -t -i --rm srp33/shinylearner_gpu:version$(cat VERSION) /bin/bash
+nvidia-docker run -t -i --rm srp33/shinylearner_gpu:version$(cat VERSION) /bin/bash

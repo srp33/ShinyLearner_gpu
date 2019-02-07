@@ -1,0 +1,21 @@
+#!/bin/bash
+
+currentDir=$(pwd)
+tmpDir=/tmp/shinylearner_gpu_build
+
+rm -rf $tmpDir
+mkdir -p $tmpDir
+
+cd $tmpDir
+
+wget https://github.com/srp33/ShinyLearner/archive/master.zip
+unzip master.zip
+rm master.zip
+
+cd ShinyLearner-master
+version=$(cat VERSION)
+
+cd $currentDir
+rm -rf $tmpDir
+
+echo $version > VERSION

@@ -8,12 +8,12 @@ then
   exit 1
 fi
 
-version=$(./get_sl_version) .
+./get_sl_version
+
+version=$(cat VERSION)
 cat travis.yml.template | sed "s|{version}|$version|g" > .travis.yml
 cat Dockerfile.template | sed "s|{version}|$version|g" > Dockerfile
 
-#git add .travis.yml
-#git add Dockerfile
-git add --all --dry-run
-#git commit -m "$message"
-#git push origin master
+git add --all
+git commit -m "$message"
+git push origin master

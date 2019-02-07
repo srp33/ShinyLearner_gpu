@@ -1,3 +1,9 @@
 #!/bin/bash
 
-docker build -t srp33/shinylearner_gpu:version$(./get_sl_version) .
+./get_sl_version
+
+version=$(cat VERSION)
+
+docker pull srp33/shinylearner:version${version}
+
+docker build -t srp33/shinylearner_gpu:version${version} .

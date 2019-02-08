@@ -1,4 +1,9 @@
+###################################################
+###################################################
+# Make sure to only modify the template file!!!!!!!
+###################################################
+###################################################
+
 FROM srp33/shinylearner:version449
 
-RUN conda uninstall tensorflow \
-  && conda install tensorflow-gpu
+RUN conda install tensorflow-gpu

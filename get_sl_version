@@ -1,5 +1,7 @@
 #!/bin/bash
 
+repo=$1
+
 currentDir=$(pwd)
 tmpDir=/tmp/shinylearner_gpu_build
 
@@ -8,14 +10,14 @@ mkdir -p $tmpDir
 
 cd $tmpDir
 
-wget https://github.com/srp33/ShinyLearner/archive/master.zip
+wget https://github.com/srp33/$repo/archive/master.zip
 unzip master.zip
 rm master.zip
 
-cd ShinyLearner-master
+cd ${repo}-master
 version=$(cat VERSION)
 
 cd $currentDir
 rm -rf $tmpDir
 
-echo $version > VERSION
+echo $version > ${repo}_VERSION

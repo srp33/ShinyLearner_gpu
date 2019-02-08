@@ -13,6 +13,7 @@ branches:
   only:
     - master
 script:
-  - sudo docker build -t srp33/shinylearner_gpu:version449 .
-  - sudo docker login -u="$DOCKER_USER" -p="$DOCKER_PASS"
-  - sudo docker push srp33/shinylearner_gpu:version449
+  - set -o errexit
+  - cp ShinyLearner_VERSION VERSION; BuildTests/all shinylearner_gpu
+  - echo "$DOCKER_PASS" | sudo docker login -u="$DOCKER_USER" --password-stdin
+  - sudo docker push srp33/shinylearner_gpu:version452

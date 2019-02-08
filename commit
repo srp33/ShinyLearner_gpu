@@ -8,11 +8,14 @@ then
   exit 1
 fi
 
-./get_sl_version
+./get_sl_version ShinyLearner
+./get_sl_version ShinyLearner_Environment_gpu
 
-version=$(cat VERSION)
-cat travis.yml.template | sed "s|{version}|$version|g" > .travis.yml
-cat Dockerfile.template | sed "s|{version}|$version|g" > Dockerfile
+sl_version=$(cat ShinyLearner_VERSION)
+env_version=$(cat ShinyLearner_Environment_gpu_VERSION)
+
+cat travis.yml.template | sed "s|{version}|${sl_version}|g" > .travis.yml
+cat Dockerfile.template | sed "s|{version}|${env_version}|g" > Dockerfile
 
 git add --all
 git commit -m "$message"

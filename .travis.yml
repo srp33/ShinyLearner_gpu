@@ -18,6 +18,7 @@ script:
   - unzip master.zip
   - rm -v master.zip
   - cp -v ShinyLearner_VERSION ShinyLearner-master/VERSION
+  - cp -v Dockerfile ShinyLearner-master/
   - cd ShinyLearner-master/
   - BuildTests/all shinylearner_gpu
   - echo "$DOCKER_PASS" | sudo docker login -u="$DOCKER_USER" --password-stdin

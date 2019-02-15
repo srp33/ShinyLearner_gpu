@@ -1,7 +1,0 @@
-#!/bin/bash
-
-./get_sl_version ShinyLearner
-
-sl_version=$(cat ShinyLearner_VERSION)
-
-docker build -t srp33/shinylearner_gpu:version${sl_version} .

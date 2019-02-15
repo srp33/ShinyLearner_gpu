@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -o errexit
+
+wget https://github.com/srp33/ShinyLearner/archive/master.zip
+unzip master.zip
+rm -v master.zip
+cp -v ShinyLearner_VERSION ShinyLearner-master/VERSION
+cp -v Dockerfile ShinyLearner-master/
+
+cd ShinyLearner-master/
+BuildTests/all shinylearner_gpu

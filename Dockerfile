@@ -4,7 +4,7 @@
 ###################################################
 ###################################################
 
-FROM srp33/shinylearner_environment_gpu:version11
+FROM srp33/shinylearner_environment_gpu:version13
 
 COPY ShinyLearner.tar.gz /
 RUN tar -zxf ShinyLearner.tar.gz; rm ShinyLearner.tar.gz

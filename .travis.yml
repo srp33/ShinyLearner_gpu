@@ -15,4 +15,4 @@ branches:
 script:
   - ./build_image
   - echo "$DOCKER_PASS" | sudo docker login -u="$DOCKER_USER" --password-stdin
-  - sudo docker push srp33/shinylearner_gpu:version505
+  - sudo docker push srp33/shinylearner_gpu:version507

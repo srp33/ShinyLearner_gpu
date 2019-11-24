@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -o errexit
+
 message="$1"
 
 if [[ "$message" == "" ]]

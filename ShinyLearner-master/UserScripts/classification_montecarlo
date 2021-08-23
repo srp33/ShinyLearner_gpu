@@ -1,0 +1,83 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source scripts/shared_functions
+source scripts/first_param_check
+
+dataFiles="$(python3 scripts/ParseArgs.py --data TRUE "$@")"
+description="$(python3 scripts/ParseArgs.py --description TRUE $@)"
+numIterations="$(python3 scripts/ParseArgs.py --iterations TRUE $@)"
+classifAlgos="$(python3 scripts/ParseArgs.py --classif-algo TRUE "$@")"
+verbose="$(python3 scripts/ParseArgs.py --verbose FALSE false $@)"
+ohe="$(python3 scripts/ParseArgs.py --ohe FALSE true $@)"
+scale="$(python3 scripts/ParseArgs.py --scale FALSE none $@)"
+impute="$(python3 scripts/ParseArgs.py --impute FALSE false $@)"
+randomSeed="$(python3 scripts/ParseArgs.py --seed FALSE 1 $@)"
+proportionTrain="$(python3 scripts/ParseArgs.py --train-proportion FALSE 0.67 $@)"
+numCores="$(python3 scripts/ParseArgs.py --num-cores FALSE 1 $@)"
+tmpDir="$(python3 scripts/ParseArgs.py --temp-dir FALSE '' $@)"
+
+checkParamParseOutput "$dataFiles"
+checkParamParseOutput "$description"
+checkParamParseOutput "$numIterations"
+checkParamParseOutput "$classifAlgos"
+checkParamParseOutput "$verbose"
+checkParamParseOutput "$ohe"
+checkParamParseOutput "$scale"
+checkParamParseOutput "$impute"
+checkParamParseOutput "$randomSeed"
+checkParamParseOutput "$proportionTrain"
+checkParamParseOutput "$numCores"
+
+dataFiles="$(modifyDataFilePaths "$dataFiles")"
+
+outputDir=/OutputData
+checkOutputDir $outputDir
+
+outPredictionsFile="$outputDir/Predictions.tsv"
+outMetricsFile="$outputDir/Metrics.tsv"
+outBenchmarkFile="$outputDir/ElapsedTime.tsv"
+outLogFile="$outputDir/Log.txt"
+
+source scripts/print_args
+
+function cleanup {
+  rm -rf $tmpDir
+}
+
+cleanup
+tmpDir="$(getTempDir "$tmpDir")"
+
+trap cleanup INT TERM EXIT
+
+validationType=montecarlo
+source scripts/setup
+
+echo "Parsing data..." 2>&1 | timestamp | tee -a "$outLogFile"
+analysisDataFile=$tmpDir/data.gz
+java $(getJavaArgs) -jar shinylearner.jar RAW_DATA_FILES="$dataFiles" ANALYSIS_DATA_FILE="$analysisDataFile" DEBUG=$verbose IMPUTE=$impute TEMP_DIR=$tmpDir 2>&1 | timestamp | tee -a "$outLogFile"
+
+if [[ "$impute" == "true" ]]
+then
+  echo "Imputing missing data (where applicable)..." | timestamp | tee -a "$outLogFile"
+  Rscript --vanilla scripts/Impute.R "$analysisDataFile" $verbose 2>&1 | timestamp | tee -a "$outLogFile"
+fi
+
+if [[ "$scale" != "none" ]]
+then
+  echo "Scaling numerical data (where applicable)..." | timestamp | tee -a "$outLogFile"
+  python3 scripts/Scale.py "$analysisDataFile" "$scale" $verbose 2>&1 | timestamp | tee -a "$outLogFile"
+fi
+
+if [[ "$ohe" == "true" ]]
+then
+  echo "One-hot encoding categorical data (where applicable)..." | timestamp | tee -a "$outLogFile"
+  python3 scripts/OneHotEncode.py "$analysisDataFile" 2>&1 | timestamp | tee -a "$outLogFile"
+fi
+
+scripts/classification "$analysisDataFile" "$description" "$numIterations" "$verbose" "$classifAlgos" "$outPredictionsFile" "$outMetricsFile" "$outBenchmarkFile" montecarlo "$randomSeed" "$proportionTrain" $impute "$tmpDir" "$outLogFile" "$numCores"
+
+cleanup
+
+source scripts/success_message

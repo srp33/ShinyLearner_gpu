@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -o errexit
+
+dataFile=$1
+tmpFile=$2
+pdfFile=$3
+
+if [[ "$dataFile" == "" ]]
+then
+  echo "No data file specified."
+  exit 1
+fi
+if [[ "$pdfFile" == "" ]]
+then
+  echo "No PDF file specified."
+  exit 1
+fi
+
+python3 scripts/FilterPerfOutput_Ubuntu.py $dataFile $tmpFile
+Rscript --vanilla scripts/PerfPlot.R $tmpFile $pdfFile

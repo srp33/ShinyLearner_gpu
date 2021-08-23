@@ -1,0 +1,3 @@
+#!/bin/bash
+
+echo "Analysis completed!" | timestamp | tee -a "$outLogFile"

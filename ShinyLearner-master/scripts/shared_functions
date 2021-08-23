@@ -1,0 +1,152 @@
+#!/bin/bash
+
+set -euo pipefail
+
+#################################################
+# Functions used across multiple scripts
+#################################################
+
+command_exists () {
+    type "$1" &> /dev/null ;
+}
+
+## Find out amount of memory available
+function getMemAvailable {
+  if command_exists free
+  then
+    # It's executing within the container
+    #mem=$(free -m | tail -n3 | awk '{print $2}' | head -n 2 | tail -n 1)M # Gives total memory in MB (preferred over GB because it always rounds down)
+    mem=$(free -m | grep "Mem:" | awk '{print $2}' | head -n 2 | tail -n 1)M # Gives total memory in MB (preferred over GB because it always rounds down)
+  else
+    mem=$(top -l 1 | awk '/PhysMem:/ {print $2}' | tr '[:upper:]' '[:lower:]')
+  fi
+
+  echo "$mem"
+}
+
+# Thanks: https://stackoverflow.com/questions/7596454/how-to-fetch-java-version-using-single-line-command-in-linux
+function checkJavaVersion {
+    for token in $(java -version 2>&1)
+    do
+        if [[ $token =~ \"([[:digit:]])\.([[:digit:]])\.(.*)\" ]]
+        then
+            export JAVA_MAJOR=${BASH_REMATCH[1]}
+            export JAVA_MINOR=${BASH_REMATCH[2]}
+            export JAVA_BUILD=${BASH_REMATCH[3]}
+            export JAVA_BUILD_MINOR=$(echo $JAVA_BUILD | cut -d "_" -f 2)
+            return 0
+        fi
+    done
+    return 1
+}
+
+function getJavaArgs {
+  checkJavaVersion
+
+  if [[ $JAVA_MINOR -lt 8 ]]
+  then
+    echo The Java version must be at least 1.8.
+    exit 1
+  fi
+
+  if [[ $JAVA_BUILD_MINOR -lt 151 ]]
+  then
+    echo "-Xmx$(getMemAvailable) -server"
+  else
+    # See https://twitter.com/analytically/status/894592422382063616
+    # See https://blog.codecentric.de/en/2014/08/string-deduplication-new-feature-java-8-update-20-2/
+    echo "-Xmx$(getMemAvailable) -server -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=1 -XX:+UseG1GC -XX:+UseStringDeduplication"
+    #echo "-Xmx$(getMemAvailable) -server -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:+UseStringDeduplication"
+  fi
+}
+
+function getTempDir {
+  previousValue="$1"
+
+  if [[ "$previousValue" == "" ]]
+  then
+    tmpDir="$(mktemp -d 2>/dev/null || mktemp -d -t 'mytmpdir')"
+    echo "$tmpDir"
+  else
+    mkdir -p $previousValue
+    tmpDir=$(mktemp $previousValue/XXXXXXXXX)
+    rm $tmpDir
+    mkdir -p $tmpDir
+    echo "$tmpDir"
+  fi
+}
+
+function cleanup {
+  tmpDir="$1"
+
+  rm -rf $tmpDir
+}
+
+function printError {
+  debug=$1
+  errFile=$2
+
+  if [[ "$debug" == "true" ]]
+  then
+    cat $errFile
+  fi
+}
+
+body() {
+  # See http://unix.stackexchange.com/questions/11856/sort-but-keep-header-line-at-the-top
+  IFS= read -r header
+  printf '%s\n' "$header"
+  "$@"
+}
+
+function sortFile {
+  inSortFile="$1"
+  sortCriteria="$2"
+  outSortFile="$3"
+
+  if [[ "$inSortFile" == "" ]]
+  then
+    echo No input sort file specified.
+    exit 1
+  fi
+  if [[ "$sortCriteria" == "" ]]
+  then
+    echo No sort criteria specified.
+    exit 1
+  fi
+  if [[ "$outSortFile" == "" ]]
+  then
+    echo No output sort file specified.
+    exit 1
+  fi
+
+  cat "$inSortFile" | body sort $sortCriteria > $outSortFile
+}
+
+function checkParamParseOutput {
+  value="$1"
+
+  if [[ "$value" == ERROR* ]]
+  then
+    echo "$value"
+    exit 1
+  fi
+}
+
+function timestamp {
+  python3 -c 'import sys,time;sys.stdout.write("".join(( " ".join((time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()), line)) for line in sys.stdin )))'
+}
+
+function checkOutputDir {
+  outputDir="$1"
+
+  if [ ! -w "$outputDir" ]
+  then
+    echo "Write permission has not been granted on the output directory. This could also indicate that the output directory has not been created. You must create it first."
+    exit 1
+  fi
+}
+
+function modifyDataFilePaths {
+  python3 scripts/PrependInputFilePaths.py "$1" "/InputData/"
+}

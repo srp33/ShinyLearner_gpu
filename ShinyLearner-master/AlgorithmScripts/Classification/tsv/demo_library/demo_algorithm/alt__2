@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -euo pipefail
+
+#######################################################
+# Parse input arguments, which will be passed to the
+# script while ShinyLearner is executing.
+#######################################################
+
+trainingFilePath="$1"
+testFilePath="$2"
+classOptions="$3"
+numCores="$4"
+verbose="$5"
+
+#######################################################
+# Invoke a script that executes your algorithm. Relay
+# the ShinyLearner arguments to the script. In the
+# example below, an alternate value of 15 is used
+# for the first parameter.
+#######################################################
+
+python3 $(dirname $0)/example_algorithm.py "$trainingFilePath" "$testFilePath" "$classOptions" "$numCores" "$verbose" "15" "true"

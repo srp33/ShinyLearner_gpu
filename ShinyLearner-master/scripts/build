@@ -1,0 +1,32 @@
+#!/bin/bash
+
+set -euo pipefail
+
+#javaDir="/usr/bin"
+
+currentDir=$(pwd)
+buildDir=/tmp/shinylearner_build
+
+rm -rf $buildDir
+
+mkdir -p $buildDir/shinylearner/src/shinylearner
+cp -r JavaCode/src/shinylearner/* $buildDir/shinylearner/src/shinylearner
+cp build.xml $buildDir/
+
+cd $buildDir
+
+find shinylearner -name *.java > sources_list.txt
+#$javaDir/javac @sources_list.txt
+javac @sources_list.txt
+rm sources_list.txt
+
+ant
+
+cp shinylearner.jar $currentDir/
+
+cd $currentDir
+rm -rf $buildDir
+
+echo
+echo Successfully built new version of source code!
+echo

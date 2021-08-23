@@ -1,0 +1,132 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source scripts/shared_functions
+source scripts/first_param_check
+
+dataFiles="$(python3 scripts/ParseArgs.py --data TRUE "$@")"
+description="$(python3 scripts/ParseArgs.py --description TRUE $@)"
+numIterations="$(python3 scripts/ParseArgs.py --iterations TRUE $@)"
+numFolds="$(python3 scripts/ParseArgs.py --folds TRUE $@)"
+fsAlgos="$(python3 scripts/ParseArgs.py --fs-algo TRUE "$@")"
+verbose="$(python3 scripts/ParseArgs.py --verbose FALSE false $@)"
+ohe="$(python3 scripts/ParseArgs.py --ohe FALSE true $@)"
+scale="$(python3 scripts/ParseArgs.py --scale FALSE none $@)"
+impute="$(python3 scripts/ParseArgs.py --impute FALSE false $@)"
+randomSeed="$(python3 scripts/ParseArgs.py --seed FALSE 0 $@)"
+numCores="$(python3 scripts/ParseArgs.py --num-cores FALSE 1 $@)"
+tmpDir="$(python3 scripts/ParseArgs.py --temp-dir FALSE '' $@)"
+
+checkParamParseOutput "$dataFiles"
+checkParamParseOutput "$description"
+checkParamParseOutput "$numIterations"
+checkParamParseOutput "$numFolds"
+checkParamParseOutput "$fsAlgos"
+checkParamParseOutput "$verbose"
+checkParamParseOutput "$ohe"
+checkParamParseOutput "$scale"
+checkParamParseOutput "$impute"
+checkParamParseOutput "$randomSeed"
+checkParamParseOutput "$numCores"
+checkParamParseOutput "$tmpDir"
+
+dataFiles="$(modifyDataFilePaths "$dataFiles")"
+
+outputDir=/OutputData
+checkOutputDir $outputDir
+
+outFeaturesFile="$outputDir/SelectedFeatures.tsv"
+outSummarizedFeaturesFile="$outputDir/SelectedFeatures_Summarized.tsv"
+outBenchmarkFile="$outputDir/ElapsedTime.tsv"
+outLogFile="$outputDir/Log.txt"
+
+source scripts/print_args
+
+function cleanup {
+  rm -rf $tmpDir
+}
+
+cleanup
+tmpDir="$(getTempDir "$tmpDir")"
+
+trap cleanup INT TERM EXIT
+
+validationType=crossvalidation
+source scripts/setup
+
+echo "Parsing data..." 2>&1 | timestamp | tee -a "$outLogFile"
+analysisDataFile=$tmpDir/data.gz
+java $(getJavaArgs) -jar shinylearner.jar RAW_DATA_FILES="$dataFiles" ANALYSIS_DATA_FILE="$analysisDataFile" DEBUG=$verbose IMPUTE=$impute TEMP_DIR=$tmpDir 2>&1 | timestamp | tee -a "$outLogFile"
+
+if [[ "$impute" == "true" ]]
+then
+  echo "Imputing missing data (where applicable)..." 2>&1 | timestamp | tee -a "$outLogFile"
+  Rscript --vanilla scripts/Impute.R "$analysisDataFile" $verbose 2>&1 | timestamp | tee -a "$outLogFile"
+fi
+
+if [[ "$scale" != "none" ]]
+then
+  echo "Scaling numerical data (where applicable)..." | timestamp | tee -a "$outLogFile"
+  python3 scripts/Scale.py "$analysisDataFile" "$scale" $verbose 2>&1 | timestamp | tee -a "$outLogFile"
+fi
+
+if [[ "$ohe" == "true" ]]
+then
+  echo "One-hot encoding categorical data (where applicable)..." 2>&1 | timestamp | tee -a "$outLogFile"
+  python3 scripts/OneHotEncode.py "$analysisDataFile" 2>&1 | timestamp | tee -a "$outLogFile"
+fi
+
+for iteration in $(seq 1 $numIterations)
+do
+  outDir=$tmpDir/$iteration
+  mkdir -p $outDir
+
+  if [[ "$outFeaturesFile" == "" ]]
+  then
+    outFeaturesFileIteration=
+  else
+    outFeaturesFileIteration=$outDir/outfeatures
+  fi
+  if [[ "$outBenchmarkFile" == "" ]]
+  then
+    outBenchmarkFileIteration=
+  else
+    outBenchmarkFileIteration=$outDir/outbench
+  fi
+
+  randomSeed2=$(($randomSeed + $iteration))
+
+  echo 2>&1 | timestamp | tee -a "$outLogFile"
+  echo "**************************************************************" | timestamp | tee -a "$outLogFile"
+  echo "Beginning analysis for cross-validation fold ${iteration}" | timestamp | tee -a "$outLogFile"
+  echo "**************************************************************" | timestamp | tee -a "$outLogFile"
+  scripts/featureselection "$analysisDataFile" "$description" "$numFolds" "$verbose" "$fsAlgos" "$outFeaturesFileIteration" "" "$outBenchmarkFileIteration" crossvalidation $randomSeed2 NA $impute "$outDir" "$outLogFile" "$numCores"
+done
+
+echo 2>&1 | timestamp | tee -a "$outLogFile"
+echo "**************************************************************" | timestamp | tee -a "$outLogFile"
+echo "Finalizing analysis" | timestamp | tee -a "$outLogFile"
+echo "**************************************************************" | timestamp | tee -a "$outLogFile"
+echo 2>&1 | timestamp | tee -a "$outLogFile"
+
+echo "Combining results across cross-validation iterations..." | timestamp | tee -a "$outLogFile"
+python3 scripts/CombineCrossValidationIterations.py "$tmpDir/*/outfeatures,$tmpDir/*/outbench" "$tmpDir/outfeatures,$tmpDir/outbenchmark" 2>&1 | timestamp | tee -a "$outLogFile"
+
+sortCriteria="-k1,1 -k2,2n -k3,3n -k4"
+sortFile $tmpDir/outfeatures "$sortCriteria" "$outFeaturesFile" 2>&1 | timestamp | tee -a "$outLogFile"
+sortFile $tmpDir/outbenchmark "$sortCriteria" "$outBenchmarkFile" 2>&1 | timestamp | tee -a "$outLogFile"
+
+echo "Summarizing feature ranks..." 2>&1 | timestamp | tee -a "$outLogFile"
+errFile=/dev/null
+if [[ "$verbose" == "true" ]]
+then
+  errFile=$(mktemp $tmpDir/XXXXXXXXX)
+fi
+python3 scripts/BordaCountFeatures.py $outFeaturesFile $outSummarizedFeaturesFile
+#Rscript --vanilla scripts/BordaCountFeatures.R $outFeaturesFile $outSummarizedFeaturesFile 2> $errFile | timestamp | tee -a "$outLogFile"
+#printError $verbose $errFile
+
+cleanup
+
+source scripts/success_message

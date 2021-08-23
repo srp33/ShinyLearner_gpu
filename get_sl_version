@@ -10,6 +10,7 @@ mkdir -p $tmpDir
 
 cd $tmpDir
 
+rm -f master.zip
 wget https://github.com/srp33/$repo/archive/master.zip
 unzip master.zip
 rm master.zip

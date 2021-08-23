@@ -1,0 +1,8 @@
+#!/bin/bash
+
+for f in $outputDir/*Metrics.tsv $outputDir/*Predictions.tsv
+do
+  compareF=$expectedOutputDir/$(basename $f)
+
+  python3 $(dirname $0)/CheckIdentical.py $f $compareF
+done

@@ -1,0 +1,69 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source scripts/shared_functions
+
+analysisDataFile="$1"
+description="$2"
+numIterations="$3"
+verbose="$4"
+classifAlgos="$5"
+outPredictionsFile="$6"
+outMetricsFile="$7"
+outBenchmarkFile="$8"
+validationType="${9}"
+randomSeed="${10}"
+proportionTrain="${11}"
+impute="${12}"
+tmpDir="${13}"
+outLogFile="${14}"
+numCores="${15}"
+
+source scripts/setup
+
+idFile=$tmpDir/id
+classFile=$tmpDir/cl
+trainTestFile=$tmpDir/tt
+trainTestFile2=$tmpDir/tt2
+
+python3 scripts/ExtractSampleInfo.py "$analysisDataFile" "$description" $idFile $classFile
+
+if [[ "$validationType" == "montecarlo" ]]
+then
+  python3 scripts/AssignTrainingTesting.py $idFile $classFile $iterationOutputHeader $trainTestFile $numIterations $randomSeed $proportionTrain
+else
+  python3 scripts/AssignCrossValidation.py $idFile $classFile $iterationOutputHeader $trainTestFile $numIterations $randomSeed
+fi
+
+python3 scripts/AddAlgorithmScripts.py $trainTestFile "$classifAlgos" $trainTestFile2 $verbose
+
+echo "Starting classification..." | timestamp | tee -a "$outLogFile"
+java $(getJavaArgs) -jar shinylearner.jar ANALYSIS_DATA_FILE="$analysisDataFile" EXPERIMENT_FILE=$trainTestFile2 OUTPUT_PREDICTIONS_FILE_PATH="$tmpDir/op0" OUTPUT_BENCHMARK_FILE_PATH="$tmpDir/ob" DEBUG=$verbose NUM_CORES=$numCores TEMP_DIR=$tmpDir 2> /dev/null
+
+#numClassifAlgos=$(python3 scripts/CountUniqueValues.py $trainTestFile2 -1 False)
+#if (( numClassifAlgos > 1 ))
+#then
+#  echo "Making aggregate predictions..."
+#  Rscript --vanilla scripts/MajorityVote.R "$tmpDir/op0" "$tmpDir/op"
+#else
+  cp "$tmpDir/op0" "$tmpDir/op"
+#fi
+
+echo "Calculating classification metrics..." | timestamp | tee -a "$outLogFile"
+Rscript --vanilla scripts/CalculateClassificationMetrics.R "$tmpDir/op" "$tmpDir/om" #2> $errFile
+cp $tmpDir/op $outPredictionsFile.abc
+#printError $verbose $errFile
+
+function parseOutputFile {
+  if [ -f "$1" ]
+  then
+    python3 scripts/ParseNonNestedResults.py $1 "$iterationOutputHeader" $1.sorttemp
+    sortFile $1.sorttemp "-k1,1 -k2,2n -k3" "$2"
+  fi
+}
+
+echo "Preparing output files..." | timestamp | tee -a "$outLogFile"
+parseOutputFile $tmpDir/op "$outPredictionsFile"
+parseOutputFile $tmpDir/om "$outMetricsFile"
+parseOutputFile $tmpDir/ob "$outBenchmarkFile"

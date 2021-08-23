@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -euo pipefail
+
+imageName="$1"
+version="$2"
+description="$3"
+validationType="$4"
+iterationsFolds="$5"
+classifAlgoFile="$6"
+verbose="$7"
+logFile="$8"
+
+inputDir=$(pwd)/input
+outputDir=$(pwd)/output
+logFile=$outputDir/$logFile
+
+analysisType=$(basename $0)
+dataFile="$description.tsv.gz"
+specificOutputDir=$outputDir/${analysisType}_${description}_${validationType}
+
+classifAlgos=$(cat $classifAlgoFile | paste -sd "," -)
+
+bash run_docker_command $inputDir $specificOutputDir $imageName $version "UserScripts/${analysisType}_${validationType} --data \"$dataFile\" --description "$description" $iterationsFolds --classif-algo \"$classifAlgos\" $verbose --impute true --ohe true" 2>&1 | tee -a $logFile
+
+expectedNumAlgorithms=$(cat $classifAlgoFile | wc -l)
+python3 CheckAccuracy.py $analysisType $validationType $description ${specificOutputDir}/Metrics.tsv Algorithm $expectedNumAlgorithms 0 2>&1 | tee -a $logFile

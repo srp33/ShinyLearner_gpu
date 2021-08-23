@@ -22,3 +22,5 @@ cat Dockerfile.template | sed "s|{version}|${env_version}|g" > Dockerfile
 git add --all
 git commit -m "$message"
 git push origin master
+
+#./build_image

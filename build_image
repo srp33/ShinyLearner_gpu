@@ -2,6 +2,10 @@
 
 set -o errexit
 
+rm -f master.zip
+rm -rf ShinyLearner-master
+mkdir ShinyLearner-master
+
 wget https://github.com/srp33/ShinyLearner/archive/master.zip
 unzip master.zip
 rm -v master.zip
@@ -10,3 +14,7 @@ cp -v Dockerfile ShinyLearner-master/
 
 cd ShinyLearner-master/
 ./scripts/build_image shinylearner_gpu
+cd ..
+
+docker login
+docker push srp33/shinylearner_gpu:version$(cat ../ShinyLearner/VERSION)

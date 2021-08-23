@@ -1,0 +1,70 @@
+#!/bin/bash
+
+set -euo pipefail
+
+currentDir=$(pwd)
+tmpDir=/tmp/shinylearner_adhoc
+version=$(cat VERSION)
+
+rm -rf $tmpDir
+mkdir -p $tmpDir/input $tmpDir/output
+
+imageName=shinylearner
+./scripts/build_image $imageName
+
+###################################################
+###################################################
+# Copy data to where Docker can find it
+###################################################
+###################################################
+
+data=StrongSignal_Both.tsv.gz
+cp -r Validation/$data $tmpDir/input/
+
+###################################################
+###################################################
+# General settings
+###################################################
+###################################################
+
+fsAlgos="AlgorithmScripts/FeatureSelection/arff/weka/Correlation/default*"
+#fsAlgos="AlgorithmScripts/FeatureSelection/arff/weka/InfoGain/default*"
+#fsAlgos="AlgorithmScripts/FeatureSelection/arff/weka/OneR/default*"
+
+classifAlgos="AlgorithmScripts/Classification/tsv/sklearn/random_forest/default*"
+#classifAlgos="AlgorithmScripts/Classification/tsv/sklearn/extra_trees/alt__bootstrap=True_class_weight=None_criterion=gini_n_estimators=1000_oob_score=False"
+#classifAlgos="AlgorithmScripts/Classification/tsv/keras/dnn/default"
+#classifAlgos="AlgorithmScripts/Classification/tsv/keras/snn/default"
+#classifAlgos="AlgorithmScripts/Classification/tsv/keras/resnet/default"
+
+#verbose="--verbose true"
+verbose="--verbose false"
+impute=true
+ohe=true
+scale=robust
+
+###################################################
+###################################################
+# Settings for different user scripts
+###################################################
+###################################################
+
+#scriptName=classification_montecarlo
+#iterationsFolds="--iterations 2"
+#algos="--classif-algo \"${classifAlgos}\""
+
+scriptName=nestedboth_montecarlo
+iterationsFolds="--outer-iterations 2 --inner-iterations 2"
+algos="--classif-algo \"$classifAlgos\" --fs-algo \"$fsAlgos\" --num-features 1,2,5,10,20,50,100,1000"
+
+###################################################
+###################################################
+# Execute the analysis
+###################################################
+###################################################
+
+cd $tmpDir
+
+bash $currentDir/BuildTests/run_docker_command $tmpDir/input $tmpDir/output $imageName $version "UserScripts/$scriptName --data "$data" --description "Test" $iterationsFolds $algos $verbose --impute $impute --ohe $ohe" --scale $scale
+
+echo See results in $tmpDir/output.

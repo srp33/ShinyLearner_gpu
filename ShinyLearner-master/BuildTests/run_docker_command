@@ -1,0 +1,16 @@
+#!/bin/bash
+
+inputDir="$1"
+outputDir="$2"
+imageName="$3"
+version="$4"
+cmd="$5"
+
+mkdir -p $outputDir
+
+docker run --rm \
+    -v $inputDir:/InputData \
+    -v $outputDir:/OutputData \
+    --user $(id -u):$(id -g) \
+    srp33/${imageName}:version${version} \
+    bash -c "$cmd"

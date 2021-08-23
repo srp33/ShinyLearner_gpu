@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -euo pipefail
+
+imageName="$1"
+version="$2"
+description="$3"
+validationType="$4"
+iterationsFolds="$5"
+fsAlgoFile="$6"
+numFeaturesOptions="$7"
+classifAlgoFile="$8"
+verbose="$9"
+logFile="${10}"
+
+inputDir=$(pwd)/input
+outputDir=$(pwd)/output
+logFile=$outputDir/$logFile
+
+analysisType=$(basename $0)
+dataFile="$description.tsv.gz"
+specificOutputDir=$outputDir/${analysisType}_${description}_${validationType}
+
+classifAlgos=$(cat $classifAlgoFile | paste -sd "," -)
+fsAlgos=$(cat $fsAlgoFile | paste -sd "," -)
+
+bash run_docker_command $inputDir $specificOutputDir $imageName $version "UserScripts/${analysisType}_${validationType} --data \"$dataFile\" --description "$description" $iterationsFolds --fs-algo \"$fsAlgos\" --num-features \"$numFeaturesOptions\" --classif-algo \"$classifAlgos\" $verbose --impute true --ohe true" 2>&1 | tee -a $logFile
+
+expectedNumAlgorithms=$(cat $classifAlgoFile | wc -l)
+python3 CheckAccuracy.py $analysisType $validationType $description "$specificOutputDir/Metrics.tsv" Algorithm $expectedNumAlgorithms 0 2>&1 | tee -a $logFile
+
+# Testing the nested selected features not necessary, as long as outer folds work fine
+#python3 CheckSelectedFeatures.py $analysisType $validationType $description "$fsAlgo" "$specificOutputDir/Nested_SelectedFeatures.tsv" Algorithm False 2>&1 | tee -a $logFile
+python3 CheckSummarizedSelectedFeatures.py "$specificOutputDir/Nested_SelectedFeatures_Summarized.tsv" 2>&1 | tee -a $logFile
+
+python3 CheckSelectedFeatures.py $analysisType $validationType $description "$specificOutputDir/SelectedFeatures.tsv" Algorithm True $expectedNumAlgorithms 2>&1 | tee -a $logFile

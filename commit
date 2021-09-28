@@ -23,4 +23,4 @@ git add --all
 git commit -m "$message"
 git push origin master
 
-#./build_image
+./build_image

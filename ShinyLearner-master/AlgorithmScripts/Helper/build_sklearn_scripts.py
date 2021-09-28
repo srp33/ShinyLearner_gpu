@@ -81,16 +81,31 @@ anova = "F, score = f_classif(train_X, train_y)"
 createScripts("FeatureSelection", packagePath, "sklearn_f_template", "anova", "score", anova, {}, summaryDict)
 
 mutual_info = "score = 1 - mutual_info_classif(train_X, train_y, n_neighbors={n_neighbors})"
-createScripts("FeatureSelection", packagePath, "sklearn_f_template", "mutual_info", "score", mutual_info, {"n_neighbors": [3]}, summaryDict)
+createScripts("FeatureSelection", packagePath, "sklearn_f_template", "mutual_info", "score", mutual_info, {"n_neighbors": [3, 1, 5, 10]}, summaryDict)
 
 random_forest_rfe = "selector = RFE(RandomForestClassifier(n_estimators=100, random_state=R_SEED), n_features_to_select=1, step={step})"
-createScripts("FeatureSelection", packagePath, "sklearn_f_template", "random_forest_rfe", "rfe", random_forest_rfe, {"step": [0.1]}, summaryDict)
+createScripts("FeatureSelection", packagePath, "sklearn_f_template", "random_forest_rfe", "rfe", random_forest_rfe, {"step": [0.1, 0.02, 0.05, 0.2]}, summaryDict)
 
 #random_logistic_regression = "scorer = RandomizedLogisticRegression(C={C}, scaling={scaling}, sample_fraction={sample_fraction}, n_resampling={n_resampling}, selection_threshold={selection_threshold}, tol={tol}, fit_intercept=True, verbose=False, normalize=True, random_state=R_SEED)"
 #createScripts("FeatureSelection", packagePath, "sklearn_f_template", "random_logistic_regression", "coef", random_logistic_regression, {"C": [1], "scaling": [0.5], "sample_fraction": [0.75], "n_resampling": [200], "selection_threshold": [0.25], "tol": [0.001]}, summaryDict)
 
 svm_rfe = "selector = RFE(SVC(random_state=R_SEED, kernel='linear'), n_features_to_select=1, step={step})"
-createScripts("FeatureSelection", packagePath, "sklearn_f_template", "svm_rfe", "rfe", svm_rfe, {"step": [0.1]}, summaryDict)
+createScripts("FeatureSelection", packagePath, "sklearn_f_template", "svm_rfe", "rfe", svm_rfe, {"step": [0.1, 0.02, 0.05, 0.2]}, summaryDict)
+
+##svm_wrapper = "wrapper = SequentialFeatureSelector(SVC(random_state=R_SEED, kernel='rbf'), n_features_to_select=3, direction='forward')"
+##createScripts("FeatureSelection", packagePath, "sklearn_f_template", "svm_wrapper", "wrapper", svm_wrapper, {}, summaryDict)
+
+##logistic_wrapper = "wrapper = SequentialFeatureSelector(LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0, fit_intercept=True, intercept_scaling=1, class_weight=None, solver='liblinear', max_iter=100, multi_class='ovr', verbose=0, warm_start=False, n_jobs={n_jobs}, random_state=R_SEED), n_features_to_select=1, direction='forward')"
+##createScripts("FeatureSelection", packagePath, "sklearn_f_template", "logistic_wrapper", "wrapper", logistic_wrapper, {}, summaryDict)
+
+##mlp_wrapper = "wrapper = SequentialFeatureSelector(MLPClassifier(hidden_layer_sizes=(100,), activation='relu', solver='adam', alpha=0.0001, batch_size='auto', learning_rate='constant', learning_rate_init=0.001, power_t=0.5, max_iter=200, shuffle=True, tol=0.0001, verbose=False, warm_start=False, momentum=0.9, nesterovs_momentum=True, early_stopping=False, validation_fraction=0.1, beta_1=0.9, beta_2=0.999, epsilon=1e-08, random_state=R_SEED), n_features_to_select=1, direction='forward')"
+##createScripts("FeatureSelection", packagePath, "sklearn_f_template", "mlp_wrapper", "wrapper", mlp_wrapper, {}, summaryDict)
+
+##rf_wrapper = "wrapper = SequentialFeatureSelector(RandomForestClassifier(n_estimators=50, criterion='gini', max_depth=None, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features='auto', max_leaf_nodes=None, bootstrap=True,oob_score=False, n_jobs={n_jobs}, verbose=0, warm_start=False, class_weight=None, random_state=R_SEED), n_features_to_select=1, direction='forward')"
+##createScripts("FeatureSelection", packagePath, "sklearn_f_template", "rf_wrapper", "wrapper", rf_wrapper, {}, summaryDict)
+
+##knn_wrapper = "wrapper = SequentialFeatureSelector(KNeighborsClassifier(n_neighbors=1, weights='uniform', algorithm='auto', leaf_size=30, p=1, metric='minkowski', metric_params=None, n_jobs={n_jobs}), n_features_to_select=1, direction='forward')"
+##createScripts("FeatureSelection", packagePath, "sklearn_f_template", "knn_wrapper", "wrapper", knn_wrapper, {}, summaryDict)
 
 ## Failed tests: random_lasso
 

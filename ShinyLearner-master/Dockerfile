@@ -4,7 +4,7 @@
 ###################################################
 ###################################################
 
-FROM srp33/shinylearner_environment_gpu:version19
+FROM srp33/shinylearner_environment_gpu:version23
 
 COPY . /
 RUN bash /scripts/build
